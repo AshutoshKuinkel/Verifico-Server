@@ -1,13 +1,17 @@
 package com.verifico.server.auth;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.verifico.server.auth.JWT.JWTService;
 import com.verifico.server.auth.dto.LoginRequest;
 import com.verifico.server.auth.dto.RegisterRequest;
+import com.verifico.server.auth.token.RefreshToken;
+import com.verifico.server.auth.token.RefreshTokenService;
 import com.verifico.server.auth.dto.LoginResponse;
 import com.verifico.server.user.User;
 import com.verifico.server.user.UserRepository;
@@ -22,10 +26,19 @@ public class AuthService {
 
   private final UserRepository userRepository;
   private final BCryptPasswordEncoder passwordEncoder;
+  private final JWTService jwtService;
+  private final RefreshTokenService refreshTokenService;
+  @Value("${JWT_EXPIRY}")
+  private int accessTokenMins;
+  @Value("${REFRESH_TOKEN_DAYS}")
+  private long RefreshTokenDays;
 
-  public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
+  public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JWTService jwtService,
+      RefreshTokenService refreshTokenService) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
+    this.jwtService = jwtService;
+    this.refreshTokenService = refreshTokenService;
   }
 
   @Transactional
@@ -91,6 +104,10 @@ public class AuthService {
     if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
     }
+
+    String accessToken = jwtService.generateAccessToken(user.getId(), user.getUsername());
+
+    RefreshToken refreshToken = refreshTokenService.createToken(user);
 
     return new LoginResponse(
         user.getId(),
