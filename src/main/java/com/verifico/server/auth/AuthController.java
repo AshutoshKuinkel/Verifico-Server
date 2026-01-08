@@ -1,19 +1,25 @@
 package com.verifico.server.auth;
 
+import java.util.Arrays;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.verifico.server.auth.dto.LoginRequest;
 import com.verifico.server.auth.dto.LoginResponse;
 import com.verifico.server.auth.dto.RegisterRequest;
 import com.verifico.server.user.dto.UserResponse;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 @RestController
@@ -56,8 +62,41 @@ public class AuthController {
         .maxAge(RefreshTokenDays * 24 * 60 * 60)
         .build();
 
-        return ResponseEntity.ok()
-        .header(HttpHeaders.SET_COOKIE,accessCookie.toString())
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+        .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+        .build();
+  }
+
+  @PostMapping("/refresh")
+  public ResponseEntity<Void> refresh(HttpServletRequest request) {
+    String refreshToken = Arrays.stream(request.getCookies())
+        .filter(c -> "refresh_token".equals(c.getName()))
+        .findFirst()
+        .map(Cookie::getValue)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token missing"));
+
+    LoginResponse response = authService.refresh(refreshToken);
+
+    ResponseCookie accessCookie = ResponseCookie.from("access_token", response.getAccessToken()).httpOnly(true)
+        .secure(true)
+        .sameSite("Strict")
+        .path("/")
+        .maxAge(accessTokenMins * 60)
+        .build();
+
+    ResponseCookie refreshCookie = ResponseCookie.from(
+        "refresh_token",
+        response.getRefreshToken())
+        .httpOnly(true)
+        .secure(true)
+        .sameSite("Strict")
+        .path("/api/auth/refresh")
+        .maxAge(RefreshTokenDays * 24 * 60 * 60)
+        .build();
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
         .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
         .build();
   }

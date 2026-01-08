@@ -1,5 +1,7 @@
 package com.verifico.server.auth;
 
+import java.time.Instant;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -11,6 +13,7 @@ import com.verifico.server.auth.JWT.JWTService;
 import com.verifico.server.auth.dto.LoginRequest;
 import com.verifico.server.auth.dto.RegisterRequest;
 import com.verifico.server.auth.token.RefreshToken;
+import com.verifico.server.auth.token.RefreshTokenRepository;
 import com.verifico.server.auth.token.RefreshTokenService;
 import com.verifico.server.auth.dto.LoginResponse;
 import com.verifico.server.user.User;
@@ -28,17 +31,19 @@ public class AuthService {
   private final BCryptPasswordEncoder passwordEncoder;
   private final JWTService jwtService;
   private final RefreshTokenService refreshTokenService;
+  private final RefreshTokenRepository refreshTokenRepository;
   @Value("${JWT_EXPIRY}")
   private int accessTokenMins;
   @Value("${REFRESH_TOKEN_DAYS}")
   private long RefreshTokenDays;
 
   public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JWTService jwtService,
-      RefreshTokenService refreshTokenService) {
+      RefreshTokenService refreshTokenService, RefreshTokenRepository refreshTokenRepository) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.refreshTokenService = refreshTokenService;
+    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   @Transactional
@@ -115,5 +120,33 @@ public class AuthService {
         user.getEmail(),
         accessToken, // this cannot be sent as a json response to client in prod
         refreshToken.getToken()); // this cannot be sent as a json response to client in prod
+  }
+
+  public LoginResponse refresh(String refreshToken) {
+    // check access token has expired is already done in our other auth logic, so we
+    // just need to validate the refresh token (check it exists in db + isn't
+    // expired or revoked) and then delete current
+    // refresh token and then generate new access/refresh token..
+
+    RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+
+    if (token.getExpiryDate().isBefore(Instant.now())) {
+      refreshTokenRepository.delete(token);
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
+    }
+
+    User user = token.getUser();
+
+    // deleteing old token + creating new:
+    refreshTokenRepository.delete(token);
+    RefreshToken newRefreshToken = refreshTokenService.createToken(user);
+
+    // create new access token aswell:
+    String newAccessToken = jwtService.generateAccessToken(user.getId(), user.getUsername());
+
+    return new LoginResponse(user.getId(), user.getUsername(), user.getEmail(), newAccessToken,
+        newRefreshToken.getToken());
+
   }
 }
