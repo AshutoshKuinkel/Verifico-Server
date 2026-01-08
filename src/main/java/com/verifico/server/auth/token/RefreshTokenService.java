@@ -28,9 +28,12 @@ public class RefreshTokenService {
   @Transactional
   // create token
   public RefreshToken createToken(User user) {
-    // deleting the current refresh token for that user if there is one:
+    // revoking the current refresh token for that user if there is one:
     refreshTokenRepository.findByUser_Username(user.getUsername())
-        .forEach(refreshTokenRepository::delete);
+        .forEach(token -> {
+          token.setRevoked(true);
+          refreshTokenRepository.save(token);
+        });
 
     RefreshToken refreshToken = new RefreshToken();
     refreshToken.setUser(user);
@@ -51,7 +54,9 @@ public class RefreshTokenService {
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
 
     if (refreshToken.isRevoked()) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token revoked");
+      throw new ResponseStatusException(
+          HttpStatus.UNAUTHORIZED,
+          "Refresh token reuse detected");
     }
 
     if (refreshToken.getExpiryDate().isBefore(Instant.now())) {
@@ -66,5 +71,20 @@ public class RefreshTokenService {
   public void revoke(RefreshToken refreshToken) {
     refreshToken.setRevoked(true);
     refreshTokenRepository.save(refreshToken);
+  }
+
+  @Transactional
+  public RefreshToken findByToken(String token) {
+    return refreshTokenRepository.findByToken(token)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+  }
+
+  @Transactional
+  public void revokeAllForUser(User user) {
+    refreshTokenRepository.findByUser_Username(user.getUsername())
+        .forEach(token -> {
+          token.setRevoked(true);
+          refreshTokenRepository.save(token);
+        });
   }
 }

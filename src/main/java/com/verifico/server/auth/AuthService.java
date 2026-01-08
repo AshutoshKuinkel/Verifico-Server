@@ -13,7 +13,6 @@ import com.verifico.server.auth.JWT.JWTService;
 import com.verifico.server.auth.dto.LoginRequest;
 import com.verifico.server.auth.dto.RegisterRequest;
 import com.verifico.server.auth.token.RefreshToken;
-import com.verifico.server.auth.token.RefreshTokenRepository;
 import com.verifico.server.auth.token.RefreshTokenService;
 import com.verifico.server.auth.dto.LoginResponse;
 import com.verifico.server.user.User;
@@ -31,19 +30,17 @@ public class AuthService {
   private final BCryptPasswordEncoder passwordEncoder;
   private final JWTService jwtService;
   private final RefreshTokenService refreshTokenService;
-  private final RefreshTokenRepository refreshTokenRepository;
   @Value("${JWT_EXPIRY}")
   private int accessTokenMins;
   @Value("${REFRESH_TOKEN_DAYS}")
   private long RefreshTokenDays;
 
   public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JWTService jwtService,
-      RefreshTokenService refreshTokenService, RefreshTokenRepository refreshTokenRepository) {
+      RefreshTokenService refreshTokenService) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.refreshTokenService = refreshTokenService;
-    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   @Transactional
@@ -128,18 +125,26 @@ public class AuthService {
     // expired or revoked) and then delete current
     // refresh token and then generate new access/refresh token..
 
-    RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+    RefreshToken token = refreshTokenService.findByToken(refreshToken);
+
+    if (token.isRevoked()) {
+      refreshTokenService.revokeAllForUser(token.getUser());
+      throw new ResponseStatusException(
+          HttpStatus.UNAUTHORIZED,
+          "Refresh token reuse detected");
+    }
 
     if (token.getExpiryDate().isBefore(Instant.now())) {
-      refreshTokenRepository.delete(token);
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
+      refreshTokenService.revoke(token);
+      throw new ResponseStatusException(
+          HttpStatus.UNAUTHORIZED,
+          "Refresh token expired");
     }
 
     User user = token.getUser();
 
     // deleteing old token + creating new:
-    refreshTokenRepository.delete(token);
+    refreshTokenService.revoke(token);
     RefreshToken newRefreshToken = refreshTokenService.createToken(user);
 
     // create new access token aswell:
