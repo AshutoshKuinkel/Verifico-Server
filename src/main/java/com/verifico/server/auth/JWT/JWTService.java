@@ -14,9 +14,9 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 
 @Service
 public class JWTService {
@@ -29,7 +29,8 @@ public class JWTService {
   private int accessTokenMins;
 
   private SecretKey getSigningKey() {
-    return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+    byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+    return Keys.hmacShaKeyFor(keyBytes);
   }
 
   public String generateAccessToken(Long userId, String username) {
