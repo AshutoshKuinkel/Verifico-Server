@@ -1,11 +1,15 @@
 package com.verifico.server.post;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.verifico.server.common.dto.APIResponse;
 import com.verifico.server.post.dto.PostRequest;
+import com.verifico.server.post.dto.PostResponse;
 
 import jakarta.validation.Valid;
 
@@ -14,13 +18,16 @@ import jakarta.validation.Valid;
 public class PostController {
   private final PostService postService;
 
-  public PostController (PostService postService){
+  public PostController(PostService postService) {
     this.postService = postService;
   }
 
   @PostMapping("/create")
-  public void createPost(@Valid @RequestBody PostRequest request){
-    postService.createPost(request);
+  public ResponseEntity<APIResponse<PostResponse>> createPost(@Valid @RequestBody PostRequest request) {
+    PostResponse post = postService.createPost(request);
+
+    return ResponseEntity.status(HttpStatus.CREATED.value())
+        .body(new APIResponse<>("Post sucessfully created!", post));
   }
 
 }

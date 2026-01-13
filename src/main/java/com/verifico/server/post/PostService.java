@@ -69,4 +69,8 @@ public class PostService {
         savedPost.getCreatedAt(),
         savedPost.getUpdatedAt());
   }
+
+  public  void getPostById(){
+    
+  }
 }
