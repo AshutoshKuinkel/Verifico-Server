@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -50,9 +51,8 @@ public class PostController {
   public ResponseEntity<APIResponse<Page<PostResponse>>> getAllPosts(
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "15") int size,
-      @RequestParam(value = "category",required = false) String categoryName,
-      @RequestParam(value = "search", required = false) String search
-    ) {
+      @RequestParam(value = "category", required = false) String categoryName,
+      @RequestParam(value = "search", required = false) String search) {
 
     if (page < 0) {
       page = 0;
@@ -63,14 +63,24 @@ public class PostController {
     }
 
     Category category = null;
-    if(categoryName != null && !categoryName.isEmpty()){
+    if (categoryName != null && !categoryName.isEmpty()) {
       category = Category.findByCategoryName(categoryName);
     }
 
-    Page<PostResponse> posts = postService.getAllPosts(page, size,category,search);
+    Page<PostResponse> posts = postService.getAllPosts(page, size, category, search);
 
     return ResponseEntity.ok()
         .body(new APIResponse<>("Successfully fetched all posts", posts));
+  }
+
+  @PutMapping("/{id}")
+  public ResponseEntity<APIResponse<PostResponse>> updatePost(@PathVariable("id") Long id,
+      @Valid @RequestBody PostRequest request) {
+
+    PostResponse post = postService.updatePostServiceById(id, request);
+
+    return ResponseEntity.ok()
+        .body(new APIResponse<>("Successfully updated posting", post));
   }
 
 }

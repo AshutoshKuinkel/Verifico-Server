@@ -82,6 +82,54 @@ public class PostService {
 
   }
 
+  public PostResponse updatePostServiceById(Long id, PostRequest postRequest) {
+    // security check first,
+    // check if the user who posted is the one trying to update the post
+    // I think we have a common username ground, on the access token and the post,
+    // so we can compare those and see if they match for the check... We also have
+    // to check if cookie is present ofc...
+    Post post = postRepository.findById(id)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    String username = auth.getName();
+
+    if (!username.equals(post.getAuthor().getUsername())) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not authorised to make changes to this post");
+    }
+
+    // maybe here we can just take in a new request body for post, and then
+    // just save that, but if the field isn't eneterd i.e null then we keep
+    // our original values
+    if (postRequest.getTitle() != null) {
+      post.setTitle(postRequest.getTitle());
+    }
+    if (postRequest.getTagline() != null) {
+      post.setTagline(postRequest.getTagline());
+    }
+    if (postRequest.getCategory() != null) {
+      post.setCategory(postRequest.getCategory());
+    }
+    if (postRequest.getStage() != null) {
+      post.setStage(postRequest.getStage());
+    }
+    if (postRequest.getProblemDescription() != null) {
+      post.setProblemDescription(postRequest.getProblemDescription());
+    }
+    if (postRequest.getSolutionDescription() != null) {
+      post.setSolutionDescription(postRequest.getSolutionDescription());
+    }
+    if (postRequest.getScreenshotUrls() != null) {
+      post.setScreenshotUrls(postRequest.getScreenshotUrls());
+    }
+    if (postRequest.getLiveDemoUrl() != null) {
+      post.setLiveDemoUrl(postRequest.getLiveDemoUrl());
+    }
+
+    Post updatedPost = postRepository.save(post);
+    return toPostResponse(updatedPost);
+  }
+
   private PostResponse toPostResponse(Post post) {
     return new PostResponse(
         post.getId(),
