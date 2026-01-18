@@ -21,6 +21,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -31,7 +32,14 @@ import lombok.Setter;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "posts")
+@Table(name = "posts", indexes = {
+    // for the home page get all posts one:
+    @Index(name = "idx_created_at", columnList = "createdAt"),
+    // index to browser by category with latest first:
+    @Index(name = "idx_category_created", columnList = "category,createdAt"),
+    // show user's post for user profile pages:
+    @Index(name = "idx_user_created", columnList = "author,createdAt")
+})
 @Getter
 @Setter
 @NoArgsConstructor
