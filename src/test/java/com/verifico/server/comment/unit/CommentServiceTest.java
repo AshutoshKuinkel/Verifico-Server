@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +21,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -168,6 +172,49 @@ public class CommentServiceTest {
     assertEquals(post.getId(), response.postId());
 
     verify(commentRepository).save(any(Comment.class));
+  }
+
+  // get All comments for a posting (post id not found,successfully fetched all
+  // comments)
+  @Test
+  void postIdNotFoundWhenFetchingAllComments() {
+    when(postRepository.findById(4L)).thenReturn(Optional.empty());
+
+    ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+        () -> commentService.getAllCommentsForPost(4L, 0, 15));
+
+    assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    assertEquals("Post not found", ex.getReason());
+
+    verify(commentRepository, never()).save(any());
+  }
+
+  @Test
+  void successfullyFetchedAllCommentsForPost() {
+    Post post = mockPost();
+    User user = mockUser();
+    Comment comment = mockComment(user, post, "w post");
+
+    when(postRepository.findById(1L)).thenReturn(Optional.of(post));
+
+    List<Comment> commentList = List.of(comment);
+
+    Page<Comment> commentPage = new PageImpl<>(commentList);
+
+    when(commentRepository.findAllByPostIdOrderByCreatedAtDesc(eq(1L), any(Pageable.class))).thenReturn(commentPage);
+
+    Page<CommentResponse> response = commentService.getAllCommentsForPost(1L, 0, 15);
+
+    assertNotNull(response);
+    assertEquals(1, response.getContent().size());
+
+    CommentResponse commentResponse = response.getContent().get(0);
+
+    assertEquals(comment.getId(), commentResponse.id());
+    assertEquals(comment.getContent(), commentResponse.content());
+    assertEquals(user.getUsername(), commentResponse.author().getUsername());
+    assertEquals(post.getId(), commentResponse.postId());
+    assertEquals(comment.getCreatedAt(), commentResponse.createdAt());
   }
 
   // delete comment (unauthenticated user tries to delete comment, authenticated
