@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.validation.ConstraintViolationException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
 @RestControllerAdvice
@@ -19,13 +20,13 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), ex.getStatusCode().value(),
         ex.getStatusCode().toString(), ex.getReason());
-    return new ResponseEntity<ErrorResponse>(errorResponse, ex.getStatusCode());
+    return new ResponseEntity<>(errorResponse, ex.getStatusCode());
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleException(Exception ex) {
     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), 500, "Internal Server Error", ex.getMessage());
-    return new ResponseEntity<ErrorResponse>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -38,7 +39,7 @@ public class GlobalExceptionHandler {
       }
     }
     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), 400, "Bad request", errorMessage);
-    return new ResponseEntity<ErrorResponse>(errorResponse, HttpStatus.BAD_REQUEST);
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -49,7 +50,19 @@ public class GlobalExceptionHandler {
         .orElse("Invalid Request");
 
     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), 400, "Validation Error", errorMessage);
-    return new ResponseEntity<ErrorResponse>(errorResponse, HttpStatus.BAD_REQUEST);
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+    String errorMessage = ex.getConstraintViolations().stream()
+        .map(v -> v.getMessage())
+        .findFirst()
+        .orElse("Invalid Request Parameter");
+
+    ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), 400, "Validation Error", errorMessage);
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
   }
 
 }

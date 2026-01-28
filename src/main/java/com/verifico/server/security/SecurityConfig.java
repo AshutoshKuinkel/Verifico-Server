@@ -32,7 +32,6 @@ public class SecurityConfig {
       http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
           .ignoringRequestMatchers("/api/auth/**"));
     }
-    ;
     // we need to make sure we're getting our XSRF token in the frontend with like
     // axios and also setting is as header for our post, delete, put,patch etc.
     // methods
@@ -44,7 +43,7 @@ public class SecurityConfig {
             (requests) -> requests
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/logout")
                 .permitAll()
-                .requestMatchers(HttpMethod.GET, "/", "/api/posts", "/api/posts/{id}/comments").permitAll()
+                .requestMatchers(HttpMethod.GET, "/", "/api/posts", "/api/posts/{id}/comments","/api/users/{id}").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/post/create", "/api/posts/{id}/comments").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/comments/{id}").authenticated()
                 .anyRequest().authenticated());

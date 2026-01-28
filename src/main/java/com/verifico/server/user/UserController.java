@@ -1,17 +1,23 @@
 package com.verifico.server.user;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.verifico.server.common.dto.APIResponse;
+import com.verifico.server.user.dto.PublicUserResponse;
 import com.verifico.server.user.dto.UserResponse;
 
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/user")
+@Validated
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 // view someone elses profile by id, /me, search for people,
 // update my profile:
@@ -30,4 +36,18 @@ public class UserController {
     return ResponseEntity.ok()
         .body(new APIResponse<>("Successfully Fetched Profile", response));
   }
+
+  @GetMapping("/{id}")
+  public ResponseEntity<APIResponse<PublicUserResponse>> getUserProfile(@PathVariable @Positive Long id) {
+    PublicUserResponse response = userService.viewSomebodiesProfile(id);
+
+    return ResponseEntity.ok()
+        .body(new APIResponse<>("Successfully Fetched User Profile", response));
+  }
+
+  @PutMapping("/me")
+  public void updateMyProfile() {
+    // do this after the get api/users/userId
+  }
+
 }

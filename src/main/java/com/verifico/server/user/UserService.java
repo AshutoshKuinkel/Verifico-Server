@@ -6,6 +6,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.verifico.server.user.dto.PublicUserResponse;
 import com.verifico.server.user.dto.UserResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -30,11 +31,31 @@ public class UserService {
     return toUserResponse(user);
   }
 
+  public PublicUserResponse viewSomebodiesProfile(Long id) {
+    // no need authentication or anything to view some body elses profile
+    // just find by id and return the public user response..
+
+    User user = userRepository.findById(id).orElseThrow(
+        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "A user with that associated id couldn't be found"));
+
+    return toPublicUserResponse(user);
+  }
+
   public UserResponse toUserResponse(User user) {
     return new UserResponse(
         user.getId(),
         user.getUsername(),
         user.getEmail(),
+        user.getFirstName(),
+        user.getLastName(),
+        user.getBio(),
+        user.getAvatarUrl(),
+        user.getJoinedDate());
+  }
+
+  public PublicUserResponse toPublicUserResponse(User user) {
+    return new PublicUserResponse(
+        user.getUsername(),
         user.getFirstName(),
         user.getLastName(),
         user.getBio(),

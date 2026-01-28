@@ -21,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.verifico.server.user.User;
 import com.verifico.server.user.UserRepository;
 import com.verifico.server.user.UserService;
+import com.verifico.server.user.dto.PublicUserResponse;
 import com.verifico.server.user.dto.UserResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +44,8 @@ class UserServiceTest {
     user.setUsername("JohnDoe123");
     user.setEmail("johndoe2@gmail.com");
     user.setPassword("hashedPass");
+    user.setFirstName("John");
+    user.setLastName("Doe");
     return user;
   }
 
@@ -92,5 +95,31 @@ class UserServiceTest {
     assertEquals(user.getUsername(), response.username());
     assertEquals(user.getEmail(), response.email());
 
+  }
+
+  // vieweing other peoples profile endpoint tests:
+  // id not found
+  // successfully fecthed
+  @Test
+  void idNotFoundWhenSearchingForSomeoneProfile() {
+    when(userRepository.findById(4L)).thenReturn(Optional.empty());
+
+    ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+        () -> userService.viewSomebodiesProfile(4L));
+
+    assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    assertEquals("A user with that associated id couldn't be found", ex.getReason());
+  }
+
+  @Test
+  void successfullyFetchingSomebodyProfile() {
+    User user = mockUser();
+    when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+    PublicUserResponse response = userService.viewSomebodiesProfile(1L);
+
+    assertEquals(user.getUsername(), response.username());
+    assertEquals(user.getFirstName(), response.firstName());
+    assertEquals(user.getLastName(), response.LastName());
   }
 }
